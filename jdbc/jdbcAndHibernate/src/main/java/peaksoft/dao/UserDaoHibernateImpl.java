@@ -1,75 +1,86 @@
 package peaksoft.dao;
 
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import peaksoft.model.User;
 import peaksoft.util.Util;
 
 import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Query;
+import java.util.Collections;
 import java.util.List;
 
 public class UserDaoHibernateImpl implements UserDao {
-    EntityManagerFactory entityManagerFactory = Util.getEntityManager();
+
     public UserDaoHibernateImpl() {
 
     }
-
     @Override
     public void createUsersTable() {
+        Session session = Util.getSession().openSession();
+        session.beginTransaction();
+        session.persist(User.class);
+        session.getTransaction().commit();
+        session.close();
     }
 
     @Override
     public void dropUsersTable() {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        entityManager.getTransaction().begin();
-        entityManager.createQuery("delete from users").executeUpdate();
-        entityManager.getTransaction().commit();
-        entityManager.close();
-        System.out.println("Table 'users' is dropped");
+        Session session = Util.getSession().openSession();
+        session.getTransaction().begin();
+        session.createQuery("drop table users").executeUpdate();
+        session.getTransaction().commit();
+        session.close();
+        System.out.println("Successfully drop users");
     }
 
     @Override
     public void saveUser(String name, String lastName, byte age) {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        entityManager.getTransaction().begin();
-        User user = new User();
-        user.setName(name);
-        user.setLastName(lastName);
-        user.setAge(age);
-        entityManager.persist(user);
-        entityManager.getTransaction().commit();
-        entityManager.close();
+        Session session = Util.getSession().openSession();
+        session.beginTransaction().begin();
+        User user = new User(name,lastName,age);
+        session.save(user);
+        session.getTransaction().commit();
+        session.close();
+        System.out.println("User с именем – " + name + " добавлен в базу данных");
+
     }
 
     @Override
     public void removeUserById(long id) {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        entityManager.getTransaction().begin();
-        User user = entityManager.find(User.class,id);
-        entityManager.remove(user);
-        entityManager.getTransaction().commit();
-        entityManager.close();
-        System.out.println(user.getName() + " is deleted!!!");
-
+        Session session = Util.getSession().openSession();
+        session.getTransaction().begin();
+        User user = (User) session.get(User.class, id);
+        if (user != null){
+            session.delete(user);
+            session.getTransaction().commit();
+            System.out.println("User с id = " + id + " удален из базы данных");
+        }else {
+            System.out.println("Пользователь с id = " + id + " не найден в базе данных");
+        }
+        session.close();
     }
+
 
     @Override
     public List<User> getAllUsers() {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        entityManager.getTransaction().begin();
-        List<User>user = entityManager.createQuery("select u from users u ",User.class).getResultList();
-        entityManager.getTransaction().commit();
-        entityManager.close();
-        return user;
+        Session session = Util.getSession().openSession();
+        session.getTransaction().begin();
+        Query query = session.createQuery("select u from User u");
+        List<Integer> userList = Collections.singletonList(query.getFirstResult());
+        session.getTransaction().commit();
+        session.close();
+        return Collections.singletonList((User) userList);
     }
 
     @Override
     public void cleanUsersTable() {
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        entityManager.getTransaction().begin();
-        Query query = entityManager.createQuery("delete from users ");
+        Session session = Util.getSession().openSession();
+        session.getTransaction().begin();
+        Query query = session.createQuery("delete from user");
         query.executeUpdate();
-        entityManager.getTransaction().commit();
-        entityManager.close();
+        session.getTransaction().commit();
+        session.close();
+        System.out.println("Все пользователи удалены из базы данных");
     }
 }
